@@ -28,3 +28,32 @@ def normalize(v: complex) -> complex:
         return complex(0, 0)
     return v / abs(v)
 
+class Object(ABC):
+    def __init__(self, position, size):
+        self.position = position
+        self.size = size
+        self.is_active = True
+
+    @abstractmethod
+    def update(self):
+        pass
+
+class Collision(Object):
+    def __init__(self, position, half_size):
+        self.overlap = False
+        self.objects_that_overlap = []
+        super().__init__(position, half_size)
+
+    def update(self):
+        self.objects_that_overlap.clear()
+
+        self.overlap = False
+
+    def check_hit(self, another):
+        delta_pos = self.position - another.collision.position
+
+        if (abs(delta_pos.real) <= self.size.real + another.collision.size.real and
+                abs(delta_pos.imag) <= self.size.imag + another.collision.size.imag):
+            self.overlap = True
+            self.objects_that_overlap.append(another)
+
