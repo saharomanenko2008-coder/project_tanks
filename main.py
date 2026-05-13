@@ -1,3 +1,5 @@
+from tkinter import PhotoImage
+import tkinter as tk
 from math import cos, sin, atan2, degrees
 from abc import ABC, abstractmethod
 
@@ -57,3 +59,31 @@ class Collision(Object):
             self.overlap = True
             self.objects_that_overlap.append(another)
 
+
+class Projectile(GameObject):
+    def __init__(self, position, direction, radius=5, color="gray"):
+        self.time_elapsed = 0
+
+        super().__init__(position, direction, complex(radius, radius), color)
+
+    def update(self, **kwargs):
+        dx = self.direction.real * self.time_elapsed
+        dy = self.direction.imag * self.time_elapsed - (g * self.time_elapsed ** 2) / 2
+
+        self.position += complex(dx, dy)
+        self.time_elapsed += TIME_STEP
+        self.collision.position = self.position
+
+        for another in self.collision.objects_that_overlap:
+            if isinstance(another, Rectangle) or isinstance(another, Projectile):
+                self.is_active = False
+
+        self.collision.update()
+
+    def draw(self, canvas):
+        x0 = self.position.real - self.size.real
+        y0 = HEIGHT - self.position.imag - self.size.imag
+        x1 = self.position.real + self.size.real
+        y1 = HEIGHT - self.position.imag + self.size.imag
+
+        canvas.create_oval(x0, y0, x1, y1, fill=self.color)
