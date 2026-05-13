@@ -60,6 +60,54 @@ class Collision(Object):
             self.objects_that_overlap.append(another)
 
 
+class GameObject(Object):
+    def __init__(self, position, direction, size, color="gray"):
+        self.color = color
+        self.direction = direction
+        self.collision = Collision(position, size)
+        super().__init__(position, size)
+
+    @abstractmethod
+    def update(self):
+        pass
+
+    @abstractmethod
+    def draw(self, canvas):
+        pass
+
+
+
+class Rectangle(GameObject):
+    def __init__(self, position, size, color="gray"):
+        super().__init__(position, 0, size, color)
+
+    def update(self):
+        self.collision.update()
+
+    def draw(self, canvas):
+        x0 = self.position.real - self.size.real
+        y0 = HEIGHT - self.position.imag - self.size.imag
+        x1 = self.position.real + self.size.real
+        y1 = HEIGHT - self.position.imag + self.size.imag
+
+        canvas.create_rectangle(x0, y0, x1, y1, fill=self.color)
+
+class Circle(GameObject):
+    def __init__(self, position, size, color="gray"):
+        super().__init__(position, 0, size, color)
+
+    def update(self):
+        self.collision.update()
+
+    def draw(self, canvas):
+        x0 = self.position.real - self.size.real
+        y0 = HEIGHT - self.position.imag - self.size.imag
+        x1 = self.position.real + self.size.real
+        y1 = HEIGHT - self.position.imag + self.size.imag
+
+        canvas.create_oval(x0, y0, x1, y1, fill=self.color)
+
+
 class Projectile(GameObject):
     def __init__(self, position, direction, radius=5, color="gray"):
         self.time_elapsed = 0
