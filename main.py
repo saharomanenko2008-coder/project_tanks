@@ -135,3 +135,92 @@ class Projectile(GameObject):
         y1 = HEIGHT - self.position.imag + self.size.imag
 
         canvas.create_oval(x0, y0, x1, y1, fill=self.color)
+
+class Tank(GameObject):
+    def __init__(self, position, direction = complex(0,0), trajectory = complex(0, 4),
+                 color="gray", size = complex(40, 30), is_first=True, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+        self.trajectory = trajectory
+        self.time_in_air = 0
+        self.time_from_last_shot = 1
+        self.tank_sprite = PhotoImage(file='tank_simple.png')
+        self.is_first = is_first
+
+        super().__init__(position, direction, size, color)
+
+    def keyboard_interrupt(self, pressed_keys):
+        result = None
+
+        if self.fire_key in pressed_keys:
+            if self.time_from_last_shot >= TIME_BETWEEN_SHOTS:
+                self.time_from_last_shot = 0
+                return Projectile(position=self.position + normalize(self.trajectory)*100+complex(0, 15), direction=self.trajectory, color=self.color)
+
+        if self.time_in_air == 0:
+            if self.forward_key in pressed_keys:
+                self.direction = SPEED
+            if self.back_key in pressed_keys:
+                self.direction = -SPEED
+        if self.up_key in pressed_keys:
+            self.trajectory *= complex(cos(ROTATION_SPEED), sin(ROTATION_SPEED))
+        if self.down_key in pressed_keys:
+            self.trajectory *= complex(cos(ROTATION_SPEED), -sin(ROTATION_SPEED))
+        if self.more_power_key in pressed_keys:
+            if abs(self.trajectory) < MAX_POWER:
+                self.trajectory *= ADD_POWER_SPEED
+        if self.less_power_key in pressed_keys:
+            self.trajectory *= 1/ADD_POWER_SPEED
+
+        return result
+
+    def update(self):
+        self.time_in_air += TIME_STEP
+
+        for another in self.collision.objects_that_overlap:
+            if isinstance(another, Projectile):
+                self.is_active = False
+            elif isinstance(another, Rectangle):
+                for obstacle in self.collision.objects_that_overlap:
+                    obstacle_dir = complex(0, 0)
+
+                    x_in_range = self.position.real - self.size.real <= obstacle.position.real <= self.position.real + self.size.real
+                    y_in_range = self.position.imag - self.size.imag <= obstacle.position.imag <= self.position.imag + self.size.imag
+
+                    if x_in_range:
+                        obstacle_dir = complex(0, 1 if obstacle.position.imag >= self.position.imag else -1)
+                    elif y_in_range:
+                        obstacle_dir = complex(1 if obstacle.position.real >= self.position.real else -1, 0)
+                    else:
+                        right = obstacle.position.real > self.position.real + self.size.real
+                        smaller = obstacle.size.real <= self.size.real
+
+                        if right:
+                            obstacle_dir = complex(1, 0) if smaller else complex(0, -1)
+                        else:
+                            obstacle_dir = complex(0, -1) if obstacle.size.real > self.size.real else complex(-1, 0)
+
+                    if obstacle_dir == complex(0, -1):
+                        self.direction = self.direction.real
+                        self.time_in_air = 0
+                    elif dot(self.direction, obstacle_dir) >= 0:
+                        self.direction = self.direction.imag
+
+        self.direction -= complex(0, (g * self.time_in_air ** 2) / 2)
+        self.position += self.direction
+        self.direction = 0
+        self.collision.position = self.position
+        self.collision.update()
+        self.time_from_last_shot += TIME_STEP
+
+    def draw(self, canvas):
+        canvas.create_line(self.position.real, HEIGHT-self.position.imag-15, (self.position+normalize(self.trajectory)*100).real,
+                           HEIGHT-(self.position+normalize(self.trajectory)*100).imag-15, width=3, fill=self.color)
+
+        canvas.create_image(self.position.real+4, HEIGHT-self.position.imag, image=self.tank_sprite)
+
+        for i in range(int(abs(self.trajectory) * 4) // MAX_POWER+1):
+            cx = 50 + i * 20 if self.is_first else WIDTH - (50 + i * 20)
+            cy = 50
+            canvas.create_oval(cx - 5, cy - 5, cx + 5, cy + 5, fill=self.color)
